@@ -63,18 +63,17 @@ function scanAndHide(platform) {
 
 // Initialization
 const platform = getPlatform();
-if (!platform) {
-  // Not on a supported platform, do nothing
-} else {
+if (platform) {
   chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
-    if (!enabled) return;
-
-    scanAndHide(platform);
+    if (enabled) scanAndHide(platform);
 
     let debounceTimer = null;
     const observer = new MutationObserver(() => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => scanAndHide(platform), 100);
+      chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
+        if (!isEnabled) return;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => scanAndHide(platform), 100);
+      });
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
