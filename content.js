@@ -1,4 +1,5 @@
 // content.js
+// bodyMatches and authorMatches are globals injected by matcher.js (loaded first in manifest)
 
 const PLATFORMS = {
   twitter: {
@@ -38,13 +39,10 @@ function shouldHide(postEl, platform) {
   return false;
 }
 
-let hiddenCount = 0;
-
 function hidePost(postEl) {
   if (postEl.dataset.deslopified) return;
   postEl.style.display = 'none';
   postEl.dataset.deslopified = 'true';
-  hiddenCount++;
   chrome.storage.session.get({ hiddenTotal: 0 }, (data) => {
     chrome.storage.session.set({ hiddenTotal: data.hiddenTotal + 1 });
   });
