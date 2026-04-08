@@ -60,3 +60,31 @@ function scanAndHide(platform) {
     if (shouldHide(postEl, platform)) hidePost(postEl);
   });
 }
+
+// Initialization
+const platform = getPlatform();
+if (!platform) {
+  // Not on a supported platform, do nothing
+} else {
+  chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
+    if (!enabled) return;
+
+    scanAndHide(platform);
+
+    const observer = new MutationObserver(() => {
+      scanAndHide(platform);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.type === 'TOGGLE') {
+        if (msg.enabled) {
+          scanAndHide(platform);
+        } else {
+          unhideAll();
+        }
+      }
+    });
+  });
+}
