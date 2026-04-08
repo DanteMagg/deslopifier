@@ -4,7 +4,8 @@
 // matcher.js uses module.exports when running in Node, but is a plain script in Chrome.
 // We load it by reading and eval-ing it to avoid ES module/CJS friction.
 const fs = require('fs');
-eval(fs.readFileSync('./matcher.js', 'utf8'));
+const path = require('path');
+eval(fs.readFileSync(path.join(__dirname, '../matcher.js'), 'utf8'));
 
 let passed = 0;
 let failed = 0;
