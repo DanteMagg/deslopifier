@@ -26,12 +26,13 @@ const PLATFORMS = {
   // targeting specific sub-elements.
   linkedin: {
     postSelectors: [
-      '[data-urn*="activity"]',       // feed activity posts
-      '.fie-impression-container',     // LinkedIn feed impression wrapper
-      '.occludable-update',            // older LinkedIn post wrapper
-      'article',                       // semantic fallback
-      '[data-urn]',                    // any URN-tagged element
-      '.feed-shared-update-v2',        // legacy class
+      '[role="listitem"][componentkey]', // current LinkedIn (2026): ARIA listitem + component key
+      '[data-urn*="activity"]',          // older LinkedIn feed activity posts
+      '.fie-impression-container',        // older LinkedIn feed impression wrapper
+      '.occludable-update',               // older LinkedIn post wrapper
+      'article',                          // semantic fallback
+      '[data-urn]',                       // any URN-tagged element
+      '.feed-shared-update-v2',           // legacy class
     ],
   },
 };
