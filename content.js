@@ -12,7 +12,14 @@ const PLATFORMS = {
   // selector chain and scan the entire post's text content instead of
   // targeting specific sub-elements.
   linkedin: {
-    postSelectors: ['article', '[data-urn]', '.feed-shared-update-v2'],
+    postSelectors: [
+      '[data-urn*="activity"]',       // feed activity posts
+      '.fie-impression-container',     // LinkedIn feed impression wrapper
+      '.occludable-update',            // older LinkedIn post wrapper
+      'article',                       // semantic fallback
+      '[data-urn]',                    // any URN-tagged element
+      '.feed-shared-update-v2',        // legacy class
+    ],
   },
 };
 
@@ -54,9 +61,14 @@ function hidePost(postEl) {
   if (postEl.dataset.deslopified) return;
   postEl.style.display = 'none';
   postEl.dataset.deslopified = 'true';
-  chrome.storage.session.get({ hiddenTotal: 0 }, (data) => {
-    chrome.storage.session.set({ hiddenTotal: data.hiddenTotal + 1 });
-  });
+  // Counter increment is best-effort — don't let storage errors block hiding
+  try {
+    chrome.storage.session.get({ hiddenTotal: 0 }, (data) => {
+      try {
+        chrome.storage.session.set({ hiddenTotal: data.hiddenTotal + 1 });
+      } catch (_) {}
+    });
+  } catch (_) {}
 }
 
 function unhideAll() {
