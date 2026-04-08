@@ -1,5 +1,18 @@
 // content.js
-// bodyMatches and authorMatches are globals injected by matcher.js (loaded first in manifest)
+// bodyMatches, authorMatches, linkedinMatches are globals injected by matcher.js (loaded first in manifest)
+
+function isExtensionAlive() {
+  try {
+    return !!chrome.runtime?.id;
+  } catch (_) {
+    return false;
+  }
+}
+
+function safeChromeCall(fn) {
+  if (!isExtensionAlive()) return;
+  try { fn(); } catch (_) {}
+}
 
 const PLATFORMS = {
   twitter: {
@@ -61,14 +74,13 @@ function hidePost(postEl) {
   if (postEl.dataset.deslopified) return;
   postEl.style.display = 'none';
   postEl.dataset.deslopified = 'true';
-  // Counter increment is best-effort — don't let storage errors block hiding
-  try {
+  safeChromeCall(() => {
     chrome.storage.session.get({ hiddenTotal: 0 }, (data) => {
-      try {
+      safeChromeCall(() => {
         chrome.storage.session.set({ hiddenTotal: data.hiddenTotal + 1 });
-      } catch (_) {}
+      });
     });
-  } catch (_) {}
+  });
 }
 
 function unhideAll() {
@@ -90,32 +102,38 @@ function scanAndHide(platform) {
 // Initialization
 const platform = getPlatform();
 if (platform) {
-  chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
-    if (enabled) scanAndHide(platform);
+  safeChromeCall(() => {
+    chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
+      if (enabled) scanAndHide(platform);
 
-    let debounceTimer = null;
-    const observer = new MutationObserver(() => {
-      try {
-        chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
-          if (!isEnabled) return;
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => scanAndHide(platform), 100);
-        });
-      } catch (e) {
-        observer.disconnect();
-      }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.type === 'TOGGLE') {
-        if (msg.enabled) {
-          scanAndHide(platform);
-        } else {
-          unhideAll();
+      let debounceTimer = null;
+      const observer = new MutationObserver(() => {
+        if (!isExtensionAlive()) {
+          observer.disconnect();
+          return;
         }
-      }
+        try {
+          chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
+            if (!isEnabled) return;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => scanAndHide(platform), 100);
+          });
+        } catch (_) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      chrome.runtime.onMessage.addListener((msg) => {
+        if (msg.type === 'TOGGLE') {
+          if (msg.enabled) {
+            scanAndHide(platform);
+          } else {
+            unhideAll();
+          }
+        }
+      });
     });
   });
 }
