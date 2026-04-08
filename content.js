@@ -73,6 +73,7 @@ function shouldHide(postEl, platform) {
 
 function hidePost(postEl) {
   if (postEl.dataset.deslopified) return;
+  console.log('[Deslopifier] Hiding post:', postEl.textContent.slice(0, 60).trim());
   postEl.style.display = 'none';
   postEl.dataset.deslopified = 'true';
   safeChromeCall(() => {
@@ -101,11 +102,16 @@ function scanAndHide(platform) {
 }
 
 // Initialization
+console.log('[Deslopifier] Content script loaded on', location.hostname);
 const platform = getPlatform();
+console.log('[Deslopifier] Platform:', platform ? 'detected' : 'none');
+console.log('[Deslopifier] Extension alive:', isExtensionAlive());
 if (platform) {
   safeChromeCall(() => {
     chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
+      console.log('[Deslopifier] Enabled:', enabled);
       if (enabled) scanAndHide(platform);
+      console.log('[Deslopifier] Initial scan complete');
 
       let debounceTimer = null;
       const observer = new MutationObserver(() => {
