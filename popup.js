@@ -27,8 +27,8 @@ toggle.addEventListener('change', () => {
 });
 
 // Keep counter live while popup is open
-chrome.storage.session.onChanged.addListener((changes) => {
-  if (changes.hiddenTotal) {
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'session' && changes.hiddenTotal) {
     const count = changes.hiddenTotal.newValue;
     counter.textContent = `${count} post${count === 1 ? '' : 's'} hidden this session`;
   }

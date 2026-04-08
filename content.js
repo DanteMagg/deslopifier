@@ -47,7 +47,10 @@ function getPlatform() {
 function getLinkedInPosts() {
   for (const sel of PLATFORMS.linkedin.postSelectors) {
     const els = document.querySelectorAll(sel);
-    if (els.length > 0) return els;
+    if (els.length > 0) {
+      // Filter out nested elements (comments inside posts)
+      return [...els].filter((el) => !el.parentElement.closest(sel));
+    }
   }
   return [];
 }
@@ -57,10 +60,16 @@ function getTextContent(el, selector) {
   return node ? node.textContent : '';
 }
 
+function getLinkedInPostText(postEl) {
+  const clone = postEl.cloneNode(true);
+  // Remove comment sections before scanning — aria-labels are stable even when class names aren't
+  clone.querySelectorAll('[aria-label*="comment" i], [aria-label*="reaction" i]').forEach((el) => el.remove());
+  return clone.textContent;
+}
+
 function shouldHide(postEl, platform) {
   if (platform.postSelectors) {
-    // LinkedIn: class names are obfuscated, scan full post text
-    return linkedinMatches(postEl.textContent);
+    return linkedinMatches(getLinkedInPostText(postEl));
   }
   const handle = getTextContent(postEl, platform.handle);
   const authorName = getTextContent(postEl, platform.authorName);
@@ -71,18 +80,60 @@ function shouldHide(postEl, platform) {
   return false;
 }
 
+function getPostUrl(postEl) {
+  const tweetLink = postEl.querySelector('a[href*="/status/"]');
+  if (tweetLink) return tweetLink.href;
+  // Try any anchor containing a LinkedIn post URN
+  const liLink = postEl.querySelector(
+    'a[href*="/feed/update/"], a[href*="/posts/"], a[href*="urn:li:ugcPost"], a[href*="urn:li:activity"]'
+  );
+  if (liLink) return liLink.href;
+  // Fall back to data-urn on the element or a descendant
+  const urnEl = postEl.querySelector('[data-urn*="activity"], [data-urn*="ugcPost"]');
+  const urn = urnEl?.dataset.urn ?? (postEl.dataset.urn?.match(/urn:li:(activity|ugcPost):[^?&\s]+/)?.[0]);
+  if (urn) return `https://www.linkedin.com/feed/update/${urn}/`;
+  // Activity posts ("X commented/liked") have no post permalink — link to post author's profile instead
+  // (first distinct /in/ = commenter/liker, second = post author)
+  const profiles = [...new Set([...postEl.querySelectorAll('a[href*="linkedin.com/in/"]')].map((a) => a.href))];
+  if (profiles.length >= 2) return profiles[1] + 'recent-activity/all/';
+  if (profiles.length === 1) return profiles[0] + 'recent-activity/all/';
+  return null;
+}
+
+function getMatchReason(text) {
+  const lower = text.toLowerCase();
+  const allKw = ['stanforcreators','stan_store','stan.store','boardy_ai','boardyai','boardy.ai','polarity.cc','polarityco','polarity','boardy'];
+  for (const kw of allKw) {
+    if (lower.includes(kw)) return `keyword:"${kw}"`;
+  }
+  if (/\bstan\b/i.test(text)) return 'keyword:"stan" (word boundary)';
+  return 'unknown';
+}
+
+let localHiddenCount = 0;
+let syncTimeout = null;
+
 function hidePost(postEl) {
   if (postEl.dataset.deslopified) return;
-  console.log('[Deslopifier] Hiding post:', postEl.textContent.slice(0, 60).trim());
   postEl.style.display = 'none';
   postEl.dataset.deslopified = 'true';
-  safeChromeCall(() => {
-    chrome.storage.session.get({ hiddenTotal: 0 }, (data) => {
-      safeChromeCall(() => {
-        chrome.storage.session.set({ hiddenTotal: data.hiddenTotal + 1 });
+  const url = getPostUrl(postEl);
+  const reason = getMatchReason(postEl.textContent);
+  const snippet = postEl.textContent.slice(0, 80).trim();
+  console.log('[Deslopifier] Hidden:', url || '(no link)', `(${reason})`, '—', snippet);
+  
+  localHiddenCount++;
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    safeChromeCall(() => {
+      chrome.storage.session.get({ hiddenTotal: 0 }, (data) => {
+        safeChromeCall(() => {
+          chrome.storage.session.set({ hiddenTotal: data.hiddenTotal + localHiddenCount });
+          localHiddenCount = 0;
+        });
       });
     });
-  });
+  }, 500);
 }
 
 function unhideAll() {
@@ -92,53 +143,95 @@ function unhideAll() {
   });
 }
 
+const idle = window.requestIdleCallback
+  ? (cb) => window.requestIdleCallback(cb, { timeout: 500 })
+  : (cb) => setTimeout(cb, 0);
+
+function evaluatePosts(posts, platform) {
+  for (const postEl of posts) {
+    if (!postEl.dataset.deslopified && shouldHide(postEl, platform)) hidePost(postEl);
+  }
+}
+
 function scanAndHide(platform) {
-  const posts = platform.postSelectors
-    ? getLinkedInPosts()
-    : document.querySelectorAll(platform.post);
-  posts.forEach((postEl) => {
-    if (shouldHide(postEl, platform)) hidePost(postEl);
+  idle(() => {
+    const posts = platform.postSelectors
+      ? getLinkedInPosts()
+      : document.querySelectorAll(platform.post);
+    evaluatePosts(posts, platform);
   });
 }
 
+// Find post elements within a set of newly added nodes (avoids full DOM scan)
+function findNewPosts(addedNodes, platform) {
+  const results = [];
+  if (platform.postSelectors) {
+    for (const sel of PLATFORMS.linkedin.postSelectors) {
+      let found = false;
+      for (const node of addedNodes) {
+        if (node.matches?.(sel) && !node.parentElement?.closest(sel)) {
+          results.push(node);
+          found = true;
+        }
+        node.querySelectorAll?.(sel).forEach((el) => {
+          if (!el.parentElement?.closest(sel)) { results.push(el); found = true; }
+        });
+      }
+      if (found) break;
+    }
+  } else {
+    for (const node of addedNodes) {
+      if (node.matches?.(platform.post)) results.push(node);
+      node.querySelectorAll?.(platform.post).forEach((el) => results.push(el));
+    }
+  }
+  return results;
+}
+
 // Initialization
-console.log('[Deslopifier] Content script loaded on', location.hostname);
 const platform = getPlatform();
-console.log('[Deslopifier] Platform:', platform ? 'detected' : 'none');
-console.log('[Deslopifier] Extension alive:', isExtensionAlive());
 if (platform) {
   safeChromeCall(() => {
     chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
-      console.log('[Deslopifier] Enabled:', enabled);
       if (enabled) scanAndHide(platform);
-      console.log('[Deslopifier] Initial scan complete');
 
+      let pendingNodes = [];
       let debounceTimer = null;
-      const observer = new MutationObserver(() => {
+      const observer = new MutationObserver((mutations) => {
         if (!isExtensionAlive()) {
           observer.disconnect();
           return;
         }
-        try {
-          chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
-            if (!isEnabled) return;
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => scanAndHide(platform), 100);
-          });
-        } catch (_) {
-          observer.disconnect();
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) pendingNodes.push(node);
+          }
         }
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const nodes = pendingNodes.splice(0);
+          if (!nodes.length) return;
+          try {
+            chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
+              if (!isEnabled) return;
+              idle(() => evaluatePosts(findNewPosts(nodes, platform), platform));
+            });
+          } catch (_) {
+            observer.disconnect();
+          }
+        }, 200);
       });
 
       observer.observe(document.body, { childList: true, subtree: true });
 
-      chrome.runtime.onMessage.addListener((msg) => {
+      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (msg.type === 'TOGGLE') {
           if (msg.enabled) {
             scanAndHide(platform);
           } else {
             unhideAll();
           }
+          sendResponse({ success: true });
         }
       });
     });
