@@ -71,8 +71,10 @@ if (!platform) {
 
     scanAndHide(platform);
 
+    let debounceTimer = null;
     const observer = new MutationObserver(() => {
-      scanAndHide(platform);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => scanAndHide(platform), 100);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
