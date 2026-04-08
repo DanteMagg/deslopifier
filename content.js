@@ -8,11 +8,11 @@ const PLATFORMS = {
     authorName: '[data-testid="User-Name"] span',
     body: '[data-testid="tweetText"]',
   },
+  // LinkedIn obfuscates class names on every deploy, so we use a fallback
+  // selector chain and scan the entire post's text content instead of
+  // targeting specific sub-elements.
   linkedin: {
-    post: '.feed-shared-update-v2',
-    handle: '.update-components-actor__name',
-    authorName: '.update-components-actor__description',
-    body: '.feed-shared-text',
+    postSelectors: ['article', '[data-urn]', '.feed-shared-update-v2'],
   },
 };
 
@@ -23,16 +23,27 @@ function getPlatform() {
   return null;
 }
 
+function getLinkedInPosts() {
+  for (const sel of PLATFORMS.linkedin.postSelectors) {
+    const els = document.querySelectorAll(sel);
+    if (els.length > 0) return els;
+  }
+  return [];
+}
+
 function getTextContent(el, selector) {
   const node = el.querySelector(selector);
   return node ? node.textContent : '';
 }
 
 function shouldHide(postEl, platform) {
+  if (platform.postSelectors) {
+    // LinkedIn: class names are obfuscated, scan full post text
+    return linkedinMatches(postEl.textContent);
+  }
   const handle = getTextContent(postEl, platform.handle);
   const authorName = getTextContent(postEl, platform.authorName);
   const body = getTextContent(postEl, platform.body);
-
   if (authorMatches(handle)) return true;
   if (authorMatches(authorName)) return true;
   if (bodyMatches(body)) return true;
@@ -56,7 +67,10 @@ function unhideAll() {
 }
 
 function scanAndHide(platform) {
-  document.querySelectorAll(platform.post).forEach((postEl) => {
+  const posts = platform.postSelectors
+    ? getLinkedInPosts()
+    : document.querySelectorAll(platform.post);
+  posts.forEach((postEl) => {
     if (shouldHide(postEl, platform)) hidePost(postEl);
   });
 }

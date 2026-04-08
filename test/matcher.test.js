@@ -46,5 +46,17 @@ assert('case-insensitive author match', authorMatches('BOARDY'));
 assert('no match on unrelated author', !authorMatches('John Smith'));
 assert('no match on unrelated job', !authorMatches('Engineer at Google'));
 
+console.log('\n--- linkedinMatches ---');
+assert('matches "polarity" in post text', linkedinMatches('I just joined Polarity Fellowship'));
+assert('matches "boardy" in post text', linkedinMatches('Boardy connected me with 3 investors'));
+assert('matches stanforcreators in linkedin', linkedinMatches('check stanforcreators out'));
+assert('matches stan.store in linkedin', linkedinMatches('stan.store launched'));
+assert('matches boardy.ai in linkedin', linkedinMatches('boardy.ai is wild'));
+assert('matches polarity.cc in linkedin', linkedinMatches('polarity.cc fellowship'));
+assert('no match on "stanford"', !linkedinMatches('I go to Stanford University'));
+assert('no match on unrelated text', !linkedinMatches('excited to share some news'));
+assert('case-insensitive polarity', linkedinMatches('Growth Fellow @ POLARITY'));
+assert('matches job title "at Polarity"', linkedinMatches('Founding Engineer at Polarity'));
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
