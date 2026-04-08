@@ -83,11 +83,15 @@ if (platform) {
 
     let debounceTimer = null;
     const observer = new MutationObserver(() => {
-      chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
-        if (!isEnabled) return;
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => scanAndHide(platform), 100);
-      });
+      try {
+        chrome.storage.sync.get({ enabled: true }, ({ enabled: isEnabled }) => {
+          if (!isEnabled) return;
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => scanAndHide(platform), 100);
+        });
+      } catch (e) {
+        observer.disconnect();
+      }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
