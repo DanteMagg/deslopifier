@@ -19,6 +19,7 @@ const AUTHOR_KEYWORDS = ['stan', 'boardy', 'polarity'];
 const LINKEDIN_KEYWORDS = [
   'polarity',
   'boardy',
+  '@ stan',       // job title: "Growth Lead @ Stan" — avoids "@ Stanford"
   'stanforcreators',
   'stan_store',
   'stan.store',

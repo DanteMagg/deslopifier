@@ -53,7 +53,9 @@ assert('matches stanforcreators in linkedin', linkedinMatches('check stanforcrea
 assert('matches stan.store in linkedin', linkedinMatches('stan.store launched'));
 assert('matches boardy.ai in linkedin', linkedinMatches('boardy.ai is wild'));
 assert('matches polarity.cc in linkedin', linkedinMatches('polarity.cc fellowship'));
+assert('matches "@ Stan" job title', linkedinMatches('Growth Lead @ Stan'));
 assert('no match on "stanford"', !linkedinMatches('I go to Stanford University'));
+assert('no match on "@ Stanford"', !linkedinMatches('Engineer @ Stanford University'));
 assert('no match on unrelated text', !linkedinMatches('excited to share some news'));
 assert('case-insensitive polarity', linkedinMatches('Growth Fellow @ POLARITY'));
 assert('matches job title "at Polarity"', linkedinMatches('Founding Engineer at Polarity'));
