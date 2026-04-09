@@ -124,7 +124,7 @@ let syncTimeout = null;
 
 function hidePost(postEl) {
   if (postEl.dataset.deslopified) return;
-  postEl.style.display = 'none';
+  postEl.style.cssText += ';height:0!important;min-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:none!important;';
   postEl.dataset.deslopified = 'true';
   const url = getPostUrl(postEl);
   const reason = getMatchReason(postEl.textContent);
@@ -147,7 +147,13 @@ function hidePost(postEl) {
 
 function unhideAll() {
   document.querySelectorAll('[data-deslopified="true"]').forEach((el) => {
-    el.style.display = '';
+    el.style.cssText = el.style.cssText
+      .replace(/height:[^;]+;?/gi, '')
+      .replace(/min-height:[^;]+;?/gi, '')
+      .replace(/overflow:[^;]+;?/gi, '')
+      .replace(/margin:[^;]+;?/gi, '')
+      .replace(/padding:[^;]+;?/gi, '')
+      .replace(/border:[^;]+;?/gi, '');
     el.removeAttribute('data-deslopified');
   });
 }
@@ -198,14 +204,10 @@ function findNewPosts(addedNodes, platform) {
 // Initialization
 const platform = getPlatform();
 if (platform) {
-  // Scan immediately to minimize flash — don't wait for async storage check
-  safeChromeCall(() => scanAndHide(platform));
-
   safeChromeCall(() => {
     chrome.storage.sync.get({ enabled: true, customKeywords: [] }, ({ enabled, customKeywords: kws }) => {
       customKeywords = kws;
-      // If disabled, undo the eager scan above
-      if (!enabled) unhideAll();
+      if (enabled) scanAndHide(platform);
 
       let pendingNodes = [];
       let debounceTimer = null;
