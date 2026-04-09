@@ -163,12 +163,10 @@ function evaluatePosts(posts, platform) {
 }
 
 function scanAndHide(platform) {
-  idle(() => {
-    const posts = platform.postSelectors
-      ? getLinkedInPosts()
-      : document.querySelectorAll(platform.post);
-    evaluatePosts(posts, platform);
-  });
+  const posts = platform.postSelectors
+    ? getLinkedInPosts()
+    : document.querySelectorAll(platform.post);
+  evaluatePosts(posts, platform);
 }
 
 // Find post elements within a set of newly added nodes (avoids full DOM scan)
@@ -200,10 +198,14 @@ function findNewPosts(addedNodes, platform) {
 // Initialization
 const platform = getPlatform();
 if (platform) {
+  // Scan immediately to minimize flash — don't wait for async storage check
+  safeChromeCall(() => scanAndHide(platform));
+
   safeChromeCall(() => {
     chrome.storage.sync.get({ enabled: true, customKeywords: [] }, ({ enabled, customKeywords: kws }) => {
       customKeywords = kws;
-      if (enabled) scanAndHide(platform);
+      // If disabled, undo the eager scan above
+      if (!enabled) unhideAll();
 
       let pendingNodes = [];
       let debounceTimer = null;
