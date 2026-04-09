@@ -75,10 +75,24 @@ function customMatches(text) {
   return customKeywords.some((kw) => lower.includes(kw));
 }
 
+const LINK_PATTERNS = [
+  'stan.store', 'stanforcreators', 'boardy', 'polarity.cc', 'polarityco',
+  '/company/stanley-from-stan',
+];
+
+function linkedInLinkMatches(postEl) {
+  // Check anchor hrefs for direct links to company pages (catches e.g. hyperlinked "Stanley")
+  for (const a of postEl.querySelectorAll('a[href]')) {
+    const href = a.href.toLowerCase();
+    if (LINK_PATTERNS.some((p) => href.includes(p))) return true;
+  }
+  return false;
+}
+
 function shouldHide(postEl, platform) {
   const fullText = platform.postSelectors ? getLinkedInPostText(postEl) : null;
   if (fullText !== null) {
-    return linkedinMatches(fullText) || customMatches(fullText);
+    return linkedinMatches(fullText) || customMatches(fullText) || linkedInLinkMatches(postEl);
   }
   const handle = getTextContent(postEl, platform.handle);
   const authorName = getTextContent(postEl, platform.authorName);
