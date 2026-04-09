@@ -67,16 +67,25 @@ function getLinkedInPostText(postEl) {
   return clone.textContent;
 }
 
+let customKeywords = [];
+
+function customMatches(text) {
+  if (!customKeywords.length) return false;
+  const lower = text.toLowerCase();
+  return customKeywords.some((kw) => lower.includes(kw));
+}
+
 function shouldHide(postEl, platform) {
-  if (platform.postSelectors) {
-    return linkedinMatches(getLinkedInPostText(postEl));
+  const fullText = platform.postSelectors ? getLinkedInPostText(postEl) : null;
+  if (fullText !== null) {
+    return linkedinMatches(fullText) || customMatches(fullText);
   }
   const handle = getTextContent(postEl, platform.handle);
   const authorName = getTextContent(postEl, platform.authorName);
   const body = getTextContent(postEl, platform.body);
-  if (authorMatches(handle)) return true;
-  if (authorMatches(authorName)) return true;
-  if (bodyMatches(body)) return true;
+  if (authorMatches(handle) || customMatches(handle)) return true;
+  if (authorMatches(authorName) || customMatches(authorName)) return true;
+  if (bodyMatches(body) || customMatches(body)) return true;
   return false;
 }
 
@@ -192,7 +201,8 @@ function findNewPosts(addedNodes, platform) {
 const platform = getPlatform();
 if (platform) {
   safeChromeCall(() => {
-    chrome.storage.sync.get({ enabled: true }, ({ enabled }) => {
+    chrome.storage.sync.get({ enabled: true, customKeywords: [] }, ({ enabled, customKeywords: kws }) => {
+      customKeywords = kws;
       if (enabled) scanAndHide(platform);
 
       let pendingNodes = [];
@@ -226,12 +236,14 @@ if (platform) {
 
       chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (msg.type === 'TOGGLE') {
-          if (msg.enabled) {
-            scanAndHide(platform);
-          } else {
-            unhideAll();
-          }
+          if (msg.enabled) { scanAndHide(platform); } else { unhideAll(); }
           sendResponse({ success: true });
+        }
+        if (msg.type === 'KEYWORDS_UPDATED') {
+          chrome.storage.sync.get({ customKeywords: [] }, ({ customKeywords: kws }) => {
+            customKeywords = kws;
+            scanAndHide(platform);
+          });
         }
       });
     });
