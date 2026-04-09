@@ -61,10 +61,7 @@ function getTextContent(el, selector) {
 }
 
 function getLinkedInPostText(postEl) {
-  const clone = postEl.cloneNode(true);
-  // Remove comment sections before scanning — aria-labels are stable even when class names aren't
-  clone.querySelectorAll('[aria-label*="comment" i], [aria-label*="reaction" i]').forEach((el) => el.remove());
-  return clone.textContent;
+  return postEl.textContent;
 }
 
 let customKeywords = [];
