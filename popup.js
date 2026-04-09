@@ -30,10 +30,10 @@ function notifyContentScript() {
 function addKeyword() {
   const kw = keywordInput.value.trim().toLowerCase();
   if (!kw) return;
-  chrome.storage.sync.get({ customKeywords: [] }, ({ customKeywords }) => {
-    if (customKeywords.includes(kw)) { keywordInput.value = ''; return; }
-    const updated = [...customKeywords, kw];
-    chrome.storage.sync.set({ customKeywords: updated }, () => {
+  chrome.storage.sync.get({ keywords: [] }, ({ keywords }) => {
+    if (keywords.includes(kw)) { keywordInput.value = ''; return; }
+    const updated = [...keywords, kw];
+    chrome.storage.sync.set({ keywords: updated }, () => {
       renderKeywords(updated);
       notifyContentScript();
       keywordInput.value = '';
@@ -42,9 +42,9 @@ function addKeyword() {
 }
 
 function removeKeyword(kw) {
-  chrome.storage.sync.get({ customKeywords: [] }, ({ customKeywords }) => {
-    const updated = customKeywords.filter((k) => k !== kw);
-    chrome.storage.sync.set({ customKeywords: updated }, () => {
+  chrome.storage.sync.get({ keywords: [] }, ({ keywords }) => {
+    const updated = keywords.filter((k) => k !== kw);
+    chrome.storage.sync.set({ keywords: updated }, () => {
       renderKeywords(updated);
       notifyContentScript();
     });
@@ -52,9 +52,9 @@ function removeKeyword(kw) {
 }
 
 // Load current state
-chrome.storage.sync.get({ enabled: true, customKeywords: [] }, ({ enabled, customKeywords }) => {
+chrome.storage.sync.get({ enabled: true, keywords: [] }, ({ enabled, keywords }) => {
   toggle.checked = enabled;
-  renderKeywords(customKeywords);
+  renderKeywords(keywords);
 });
 
 chrome.storage.session.get({ hiddenTotal: 0 }, ({ hiddenTotal }) => {

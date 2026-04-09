@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Deslopifier",
   "version": "1.0.0",
-  "description": "Hides posts from Stan/Stanley, Boardy, and Polarity on Twitter/X and LinkedIn.",
+  "description": "Hide posts matching your keywords on LinkedIn and Twitter/X.",
   "permissions": ["storage", "tabs"],
   "background": {
     "service_worker": "background.js"

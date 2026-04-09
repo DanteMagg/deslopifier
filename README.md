@@ -1,6 +1,6 @@
 # Deslopifier
 
-Hides posts about **Stan**, **Boardy**, and **Polarity** from your LinkedIn and Twitter/X feed.
+Hide posts matching your keywords on LinkedIn and Twitter/X. Add any keywords you want — posts containing them get collapsed from your feed.
 
 ## Install
 
@@ -13,12 +13,12 @@ Hides posts about **Stan**, **Boardy**, and **Polarity** from your LinkedIn and 
 
 ## Usage
 
-- Click the extension icon to toggle it on/off
-- The popup shows how many posts have been hidden this session
+- Click the extension icon to add or remove keywords
+- Posts containing any of your keywords are collapsed from the feed
+- Toggle the extension on/off from the popup
 - Open DevTools (F12) on LinkedIn or Twitter/X to see which posts were hidden and why
 
-## What it filters
+## Supported platforms
 
-- Posts **from** employees of Stan, Boardy, or Polarity (detected via job title)
-- Posts that **mention** these companies by name or handle
-- LinkedIn activity posts ("X liked this") where the original post is about these companies
+- LinkedIn (feed)
+- Twitter / X (feed)
